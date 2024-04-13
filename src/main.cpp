@@ -16,6 +16,13 @@ Adafruit_DCMotor *myMotor = AFMS.getMotor(1);
 // You can also make another motor on port M2
 //Adafruit_DCMotor *myOtherMotor = AFMS.getMotor(2);
 
+//char* input = "#PG_90;10\n"; // replace this with the string read from the serial port
+char command[3];
+int param1, param2;
+unsigned long startTime = 0;
+bool isRunning = false;
+unsigned long delayTime = 0;
+
 void setup() {
   // put your setup code here, to run once:
   //int result = myFunction(2, 3);
@@ -35,8 +42,8 @@ void setup() {
   myMotor->run(RELEASE);
 }
 
-void loop() {
-  uint8_t i;
+void testrun() {
+    uint8_t i;
 
   Serial.print("tick");
 
@@ -64,7 +71,69 @@ void loop() {
 
   Serial.print("tech");
   myMotor->run(RELEASE);
-  delay(1000);
+}
+
+void loop() {
+  //testrun();
+  //delay(1000);
+  //Serial.print(".");
+
+  while (Serial.available() > 0) {
+    char command[64]; // Adjust size as needed
+    int len = Serial.readBytesUntil('\n', command, sizeof(command) - 1);
+    command[len] = '\0'; // Null-terminate the string
+    // Now you have a command, you can parse it and execute it
+    char cmd[3];
+    int param1, param2;
+    //Serial.print("Received command: ");
+    //Serial.print(command);
+
+    if(sscanf(command, "#%2s_%d;%d\n", cmd, &param1, &param2) == 3) {
+        // Successfully parsed command and parameters
+        // Now you can use these values to drive your motors
+        //Serial.print("Parsed command: ");
+        if(strcmp(cmd, "PG") == 0) {
+            //Serial.print("Parsed command: ");
+            delayTime = param2;
+            //Serial.print(cmd);
+            //Serial.print(" ");
+            //Serial.print(param1);
+            //Serial.print(" ; ");
+            //Serial.println(delayTime);
+            if (param1 == 1)
+            {
+              myMotor->run(FORWARD);
+            }
+            else
+            {
+              myMotor->run(BACKWARD);
+            }
+            // Set the start time and mark the motor as running
+            startTime = millis();
+            isRunning = true;
+        } else if(strcmp(cmd, "SL") == 0) {
+            //Serial.print("Slewing command: ");
+            // Handle the Slewing command
+            // ...
+            Serial.println(isRunning ? "true" : "false");
+
+        } else {
+            // Unknown command
+            Serial.println("Unknown command");
+        }
+    } else {
+        // Failed to parse the string
+        Serial.println("Failed to parse the string");
+    }
+  }
+
+  // Check if the motor is running and the delay time has passed
+  if (isRunning && millis() - startTime >= delayTime) {
+    // Stop the motor
+    myMotor->run(RELEASE);
+    isRunning = false;
+    //Serial.println("Motor stopped");
+  }
 }
 
 // put function definitions here:
